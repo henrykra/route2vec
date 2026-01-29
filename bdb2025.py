@@ -3,6 +3,8 @@ from typing import Optional
 from pathlib import Path
 import pandas as pd
 import numpy as np
+import logging
+logger = logging.getLogger(__name__)
 
 def load_csv_data(
     paths: list[Path]
@@ -32,15 +34,19 @@ def load_tracking_data(
         assert isinstance(week, int) and week >= MIN_WEEK and week <= MAX_WEEK, \
         f"provide integer weeks between {MIN_WEEK} and {MAX_WEEK}"
 
+    logger.info(f"reading data from weeks: {weeks}")
+
     # TODO: Load from database
     if db and db.exists():
         return
 
     # load data from a folderectory
     if folder and folder.exists():
+        logger.info(f"reading tracking from {folder}")
         paths = [Path(folder, f'tracking_week_{n}.csv') for n in weeks]
 
         dfs = load_csv_data(paths)
+        logger.info("finshed reading tracking")
         return pd.concat(dfs)
     
     raise FileNotFoundError
@@ -56,6 +62,7 @@ def load_player_data(
         return
 
     if folder and folder.exists():
+        logger.info(f"reading player data from {folder}")
         path = Path(folder, 'players.csv')
 
         return pd.read_csv(path)
@@ -70,12 +77,14 @@ def load_play_data(
         return
 
     if folder and folder.exists():
+        logger.info(f"reading play data from {folder}")
         path = Path(folder, 'plays.csv')
 
     return pd.read_csv(path)
 
 
 def clean_player_data(player_df: pd.DataFrame) -> pd.DataFrame:
+    logger.info("cleaning player data")
     
     # clean height
     feet = pd.to_numeric(player_df['height'].str.split('-', expand=True)[0])
@@ -86,10 +95,12 @@ def clean_player_data(player_df: pd.DataFrame) -> pd.DataFrame:
     player_df['height_z'] = (player_df['height_inches'] - player_df['height_inches'].mean()) / player_df['height_inches'].std()
     player_df['weight_z'] = (player_df['weight'] - player_df['weight'].mean()) / player_df['weight'].std()
 
+    logger.info("finished cleaning player data")
     return player_df
 
 
 def clean_tracking_data(tracking_df: pd.DataFrame) -> pd.DataFrame:
+    logger.info("cleaning tracking data")
 
     # angles to radians
     tracking_df['o'] = ((-1 * tracking_df['o'] + 90) % 360) * np.pi / 180
@@ -137,16 +148,17 @@ def clean_tracking_data(tracking_df: pd.DataFrame) -> pd.DataFrame:
     # filter
     tracking_df = tracking_df.loc[
         (tracking_df['frameId'] >= tracking_df['frameId_ball']) & # after the starting point
-        (tracking_df['club'] != 'football'),
+        (tracking_df['club'] != 'football')
         
-        ['gameId', 'playId', 'frameId', 'nflId', 'mirrored', 'x', 'y', 'vx', 'vy', 'a', 'ox', 'oy']
+        #['gameId', 'playId', 'frameId', 'nflId', 'x', 'y', 'vx', 'vy', 'a', 'ox', 'oy']
     ].copy()
     
+    logger.info("finished cleaning tracking data")
     return tracking_df
 
 
 def mirror_tracking_plays(tracking_df: pd.DataFrame) -> pd.DataFrame:
-
+    logger.info("mirroring tracking data")
     mirrored_df = tracking_df.copy()
 
     mirrored_df['y'] = mirrored_df['y'] * -1
@@ -156,15 +168,18 @@ def mirror_tracking_plays(tracking_df: pd.DataFrame) -> pd.DataFrame:
     mirrored_df['mirrored'] = True
     tracking_df['mirrored'] = False
 
+    logger.info("finished mirroring tracking data")
+
     return pd.concat([tracking_df, mirrored_df])
 
 
 def prepare_static_data(tracking_df: pd.DataFrame, play_df: pd.DataFrame, player_df: pd.DataFrame ) -> pd.DataFrame:
-
+    logger.info("preparing static data")
     # join 
+
     joined_df = (
         tracking_df
-        .groupby(['gameId', 'playId', 'nflId'], as_index=False)
+        .groupby(['gameId', 'playId', 'nflId', 'mirrored'], as_index=False)
         .first()
         .merge(
             play_df,
@@ -181,9 +196,14 @@ def prepare_static_data(tracking_df: pd.DataFrame, play_df: pd.DataFrame, player
 
     # filter
     joined_df = joined_df[        
-        ['gameId', 'playId', 'frameId', 'nflId', 'mirrored', 'height_z', 'weight_z', 'position', 'offense']
+        ['gameId', 'playId', 'nflId', 'mirrored', 'height_z', 'weight_z', 'position', 'offense']
     ].copy()
 
     joined_df = pd.get_dummies(joined_df)
+    logger.info("finished preparing static data")
 
     return joined_df
+
+def get_num_static_cols(static_df: pd.DataFrame) -> int:
+
+    return len([col for col in static_df.columns if 'Id' not in col and 'mirrored' not in col])

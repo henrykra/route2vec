@@ -2,8 +2,7 @@
 import torch
 import numpy as np
 
-
-class NflBERT(torch.nn.module):
+class NflBERT(torch.nn.Module):
     """Bert style model for encoding nfl player movement
     
     BERT uses a nearly identical transformer encoder as "Attention is all you need" and thus
@@ -20,9 +19,9 @@ class NflBERT(torch.nn.module):
         ffn_act: str="gelu",
         dropout: float=.3
     ):
+        super().__init__()
         self.norm_layer = torch.nn.BatchNorm1d(feature_dim)
         
-        torch.nn.BatchNorm1d()
         self.embed = torch.nn.Sequential(
             torch.nn.Linear(feature_dim, hidden_size),
             torch.nn.GELU(),
@@ -46,7 +45,7 @@ class NflBERT(torch.nn.module):
             torch.nn.Linear(hidden_size, hidden_size // 4),
             torch.nn.GELU(),
             torch.nn.Dropout(dropout),
-            torch.nn.LayerNorm(),
+            torch.nn.LayerNorm(hidden_size // 4),
             torch.nn.Linear(hidden_size // 4, output_dim)
         )
 
