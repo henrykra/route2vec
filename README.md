@@ -1,0 +1,13 @@
+# Bert-style encoder for NFL play design
+
+
+## Applications
+classifier head for coach - visualize coaching similarities
+
+Visualization / clustering of route concepts
+
+target probability?
+
+how "nfl" is a given drawn play?
+
+find similar plays to drawn ones
