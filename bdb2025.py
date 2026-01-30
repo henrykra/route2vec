@@ -95,7 +95,6 @@ def clean_player_data(player_df: pd.DataFrame) -> pd.DataFrame:
     player_df['height_z'] = (player_df['height_inches'] - player_df['height_inches'].mean()) / player_df['height_inches'].std()
     player_df['weight_z'] = (player_df['weight'] - player_df['weight'].mean()) / player_df['weight'].std()
 
-    logger.info("finished cleaning player data")
     return player_df
 
 
@@ -153,7 +152,6 @@ def clean_tracking_data(tracking_df: pd.DataFrame) -> pd.DataFrame:
         #['gameId', 'playId', 'frameId', 'nflId', 'x', 'y', 'vx', 'vy', 'a', 'ox', 'oy']
     ].copy()
     
-    logger.info("finished cleaning tracking data")
     return tracking_df
 
 
@@ -168,7 +166,6 @@ def mirror_tracking_plays(tracking_df: pd.DataFrame) -> pd.DataFrame:
     mirrored_df['mirrored'] = True
     tracking_df['mirrored'] = False
 
-    logger.info("finished mirroring tracking data")
 
     return pd.concat([tracking_df, mirrored_df])
 
@@ -200,10 +197,18 @@ def prepare_static_data(tracking_df: pd.DataFrame, play_df: pd.DataFrame, player
     ].copy()
 
     joined_df = pd.get_dummies(joined_df)
-    logger.info("finished preparing static data")
 
     return joined_df
 
 def get_num_static_cols(static_df: pd.DataFrame) -> int:
 
     return len([col for col in static_df.columns if 'Id' not in col and 'mirrored' not in col])
+
+
+def write_static(static: pd.DataFrame) -> None: 
+    logger.info("writing dataframes")
+    static.to_parquet("./data/static.parquet")
+    return
+
+def read_static(static_path: Path) -> pd.DataFrame:
+    return pd.read_parquet(static_path)

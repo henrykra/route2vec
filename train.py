@@ -116,10 +116,9 @@ def train(hparams: dict, model: torch.nn.Module, train_set: torch.utils.data.Dat
         val_loss = 0
         best_val_loss = float("inf")
         no_improvement = 0
-
         model.train()
         for (inp, tar, mask) in train_loader:
-
+            inp, tar, mask = inp.to(hparams["device"]), tar.to(hparams["device"]), mask.to(hparams["device"])
             optim.zero_grad()
             x = model(inp)
 

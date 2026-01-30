@@ -5,7 +5,8 @@ from scipy.interpolate import CubicSpline
 from torch.utils.data import Dataset
 import torch
 import logging
-logger = logging.Logger(__name__)
+from pathlib import Path
+logger = logging.getLogger(__name__)
 
 
 def interpolate_movement(tracking_df: pd.DataFrame, interp: int) -> np.ndarray:
@@ -18,7 +19,7 @@ def interpolate_movement(tracking_df: pd.DataFrame, interp: int) -> np.ndarray:
     num_plays = len(ids)
     routes_per_play = tracking_df.groupby(['gameId', 'playId'])['nflId'].nunique(dropna=True).max()
 
-    logger.info(f"interpolating data {len(interpolated_columns)} of data")
+    logger.info(f"interpolating data {len(interpolated_columns)} columns of data")
     # array for interpolated movement
     movement_arr = np.zeros( (num_plays, routes_per_play, num_obs, len(interpolated_columns)), dtype=np.float32)
 
@@ -44,12 +45,11 @@ def interpolate_movement(tracking_df: pd.DataFrame, interp: int) -> np.ndarray:
             # populate an array with smoothed values
             movement_arr[i, ii, ...] = spline(observation_times)
 
-    logger.info("finished interpolating data")
 
     return movement_arr
 
 
-def perpare_data_arrays(static_df: pd.DataFrame, movement_arr: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def prepare_data_arrays(static_df: pd.DataFrame, movement_arr: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     logger.info("preparing arrays")
     play_index = static_df.set_index(['gameId', 'playId', 'mirrored'])
     
@@ -75,7 +75,6 @@ def perpare_data_arrays(static_df: pd.DataFrame, movement_arr: np.ndarray) -> tu
 
     target_arr = movement_arr[..., :2].reshape((num_plays, routes_per_play, -1))
 
-    logger.info("finished preparing arrays")
     return input_arr, target_arr
 
 
@@ -100,7 +99,6 @@ def mask_input(input_arr: np.ndarray, movement_arr: np.ndarray, mask_pct: float)
     mask_arr = np.zeros(masked_players_arr.shape[0], dtype=np.float32)
     mask_arr[mask_idx] = 1
 
-    logger.info("finished masking input")
 
     return masked_players_arr.reshape(input_arr.shape), mask_arr.reshape(input_arr.shape[:2])
 
@@ -118,6 +116,14 @@ def train_val_test_split(n: int, train_pct: float, val_pct: float, test_pct: flo
     test_idx = split[split[:, -1] == 2, 0]
 
     return train_idx, val_idx, test_idx
+
+
+def write_dynamic(movement_arr: np.ndarray) -> None:
+    np.save(Path("./data/dynamic.npy"), movement_arr)
+
+def read_dynamic(dynamic_path: Path):
+    logger.info("reading numpy")
+    return np.load(dynamic_path, allow_pickle=True)
     
 
 class NflDataset(Dataset):
@@ -127,9 +133,9 @@ class NflDataset(Dataset):
         # make sure there's the right amount of input observatinos and target observations
         assert input_arr.shape[0] == target_arr.shape[0], "# Observations mismatch between input and target"
 
-        self.input_t: torch.Tensor = torch.Tensor(input_arr[idx].copy()).to(device)
-        self.target_t: torch.Tensor = torch.Tensor(target_arr[idx].copy()).to(device)
-        self.mask_t: torch.Tensor = torch.Tensor(mask_arr[idx].copy()).to(device)
+        self.input_t: torch.Tensor = torch.Tensor(input_arr[idx].copy())
+        self.target_t: torch.Tensor = torch.Tensor(target_arr[idx].copy())
+        self.mask_t: torch.Tensor = torch.Tensor(mask_arr[idx].copy())
 
         return
     
