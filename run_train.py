@@ -2,6 +2,7 @@
 import logging
 from pathlib import Path
 import sys
+import json
 logger = logging.getLogger(__name__)
 
 import bdb2025
@@ -11,27 +12,9 @@ import train
 
 def parse_config(): 
 
-    config = {
-        "folder": Path("/Users/henrykraessig/code/bdb2025/data/"),
-        "minimal": True,
-        "weeks": 1,
-        "interp": 40,
-        "mask": .15,
-        "train": .70,
-        "val": .15,
-        "test": .15,
-        "batch_size": 32,
-        "hidden_size": 64,
-        "num_layers": 2,
-        "num_heads": 2,
-        "ffn_size": 64 * 4,
-        "epochs": 100,
-        "lr": 0.001,
-        "patience": 10,
-        "device": "cpu",
-        "force": False
-    }
-
+    with open('./config.json') as f:
+        config = json.load(f)
+    
     return config
 
 

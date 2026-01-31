@@ -149,7 +149,7 @@ def train(hparams: dict, model: torch.nn.Module, train_set: torch.utils.data.Dat
                 print(f"Early stopping at epoch {epoch}\nBest Loss: {best_val_loss}")
                 break
 
-            if epoch % 100 == 0:
+            if epoch % 10 == 0:
                 # log a sample play
                 pred = model(inp)
                 
